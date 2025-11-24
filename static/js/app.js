@@ -267,15 +267,181 @@ document.documentElement.style.scrollBehavior = 'smooth';
 // Initialize
 console.log('TTS App initialized with voice customization');
 
-// Load available voices from API (optional enhancement)
+// Voice Cloning Elements
+const cloningToggle = document.getElementById('cloningToggle');
+const cloningContent = document.getElementById('cloningContent');
+const recordBtn = document.getElementById('recordBtn');
+const stopRecordBtn = document.getElementById('stopRecordBtn');
+const recordingTimer = document.getElementById('recordingTimer');
+const recordingPreview = document.getElementById('recordingPreview');
+const previewPlayer = document.getElementById('previewPlayer');
+const voiceNameInput = document.getElementById('voiceNameInput');
+const saveVoiceBtn = document.getElementById('saveVoiceBtn');
+const customVoicesGroup = document.getElementById('customVoicesGroup');
+
+// Recording State
+let mediaRecorder;
+let audioChunks = [];
+let recordingStartTime;
+let timerInterval;
+let currentRecordedBlob;
+
+// Voice Cloning Toggle
+cloningToggle.addEventListener('click', () => {
+    cloningToggle.classList.toggle('active');
+    if (cloningContent.style.display === 'none' || !cloningContent.style.display) {
+        cloningContent.style.display = 'block';
+        cloningContent.style.animation = 'fadeIn 0.5s ease';
+    } else {
+        cloningContent.style.display = 'none';
+    }
+});
+
+// Start Recording
+recordBtn.addEventListener('click', async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+        
+        mediaRecorder.onstop = () => {
+            currentRecordedBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const audioUrl = URL.createObjectURL(currentRecordedBlob);
+            previewPlayer.src = audioUrl;
+            recordingPreview.style.display = 'block';
+            
+            // Stop all tracks
+            stream.getTracks().forEach(track => track.stop());
+        };
+        
+        mediaRecorder.start();
+        
+        // UI Updates
+        recordBtn.disabled = true;
+        recordBtn.classList.add('recording');
+        recordBtn.querySelector('#recordText').textContent = '錄音中...';
+        stopRecordBtn.disabled = false;
+        recordingPreview.style.display = 'none';
+        
+        // Timer
+        recordingStartTime = Date.now();
+        timerInterval = setInterval(updateTimer, 1000);
+        
+    } catch (err) {
+        console.error('Error accessing microphone:', err);
+        showAlert('無法存取麥克風，請檢查權限設定', 'error');
+    }
+});
+
+// Stop Recording
+stopRecordBtn.addEventListener('click', () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        
+        // UI Updates
+        recordBtn.disabled = false;
+        recordBtn.classList.remove('recording');
+        recordBtn.querySelector('#recordText').textContent = '重新錄音';
+        stopRecordBtn.disabled = true;
+        
+        clearInterval(timerInterval);
+    }
+});
+
+function updateTimer() {
+    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+    const minutes = Math.floor(elapsed / 60).toString().padStart(2, '0');
+    const seconds = (elapsed % 60).toString().padStart(2, '0');
+    recordingTimer.textContent = `${minutes}:${seconds}`;
+}
+
+// Save Voice
+saveVoiceBtn.addEventListener('click', async () => {
+    if (!currentRecordedBlob) {
+        showAlert('沒有可保存的錄音', 'error');
+        return;
+    }
+    
+    const name = voiceNameInput.value.trim();
+    if (!name) {
+        showAlert('請輸入聲音名稱', 'error');
+        return;
+    }
+    
+    const formData = new FormData();
+    formData.append('audio', currentRecordedBlob, 'recording.wav');
+    formData.append('name', name);
+    
+    saveVoiceBtn.disabled = true;
+    saveVoiceBtn.textContent = '上傳中...';
+    
+    try {
+        const response = await fetch('/api/upload_voice', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showAlert(`聲音 "${data.name}" 保存成功！`, 'success');
+            
+            // Add to select list
+            addCustomVoiceOption(data.name, data.voice_id);
+            
+            // Select the new voice
+            voiceSelect.value = data.voice_id;
+            
+            // Reset UI
+            voiceNameInput.value = '';
+            recordingPreview.style.display = 'none';
+            recordingTimer.textContent = '00:00';
+            recordBtn.querySelector('#recordText').textContent = '開始錄音';
+        } else {
+            throw new Error(data.error);
+        }
+        
+    } catch (error) {
+        console.error('Error uploading voice:', error);
+        showAlert('保存聲音失敗: ' + error.message, 'error');
+    } finally {
+        saveVoiceBtn.disabled = false;
+        saveVoiceBtn.textContent = '💾 保存聲音';
+    }
+});
+
+function addCustomVoiceOption(name, id) {
+    // Remove "No custom voices" option if it exists
+    const placeholder = customVoicesGroup.querySelector('option[disabled]');
+    if (placeholder) {
+        placeholder.remove();
+    }
+    
+    const option = document.createElement('option');
+    option.value = id;
+    option.textContent = `👤 ${name}`;
+    customVoicesGroup.appendChild(option);
+}
+
+// Load available voices from API
 async function loadVoices() {
     try {
         const response = await fetch('/api/voices');
-        const voices = await response.json();
-        console.log('Available voices:', voices);
+        const data = await response.json();
         
-        // Optionally populate voice select dynamically
-        // This code keeps the hardcoded options but validates them
+        if (data.cloned && Object.keys(data.cloned).length > 0) {
+            // Clear placeholder
+            customVoicesGroup.innerHTML = '';
+            
+            Object.values(data.cloned).forEach(voice => {
+                addCustomVoiceOption(voice.name, voice.id);
+            });
+        }
+        
     } catch (error) {
         console.log('Could not load voices:', error);
     }

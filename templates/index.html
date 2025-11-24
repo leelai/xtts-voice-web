@@ -45,6 +45,44 @@
                         </div>
                     </div>
 
+                    <!-- Voice Cloning Section -->
+                    <div class="card cloning-section">
+                        <div class="section-header" id="cloningToggle">
+                            <h3>🎙️ Voice Cloning (錄製自己的聲音)</h3>
+                            <svg class="toggle-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M5 7l5 5 5-5H5z" />
+                            </svg>
+                        </div>
+
+                        <div class="cloning-content" id="cloningContent">
+                            <div class="recorder-controls">
+                                <button type="button" id="recordBtn" class="btn btn-record">
+                                    <span class="record-icon"></span>
+                                    <span id="recordText">開始錄音</span>
+                                </button>
+                                <button type="button" id="stopRecordBtn" class="btn btn-stop" disabled>
+                                    <span class="stop-icon"></span>
+                                    停止錄音
+                                </button>
+                                <span id="recordingTimer" class="timer">00:00</span>
+                            </div>
+
+                            <div class="recording-preview" id="recordingPreview" style="display: none;">
+                                <audio id="previewPlayer" controls></audio>
+
+                                <div class="save-voice-form">
+                                    <input type="text" id="voiceNameInput" placeholder="為您的聲音命名 (例如: 我的聲音 1)"
+                                        maxlength="20">
+                                    <button type="button" id="saveVoiceBtn" class="btn btn-save">
+                                        💾 保存聲音
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="recording-status" id="recordingStatus"></div>
+                        </div>
+                    </div>
+
                     <!-- Basic Settings -->
                     <div class="settings-section">
                         <h3>基本設定</h3>
@@ -69,10 +107,16 @@
                             <div class="form-group">
                                 <label for="voiceSelect">語音類型</label>
                                 <select id="voiceSelect" name="voice_preset">
-                                    <option value="female_soft">女聲 - 溫柔</option>
-                                    <option value="female_bright">女聲 - 活潑</option>
-                                    <option value="male_deep">男聲 - 深沉</option>
-                                    <option value="neutral">中性聲音</option>
+                                    <optgroup label="預設語音" id="presetVoicesGroup">
+                                        <option value="female_soft">女聲 - 溫柔</option>
+                                        <option value="female_bright">女聲 - 活潑</option>
+                                        <option value="male_deep">男聲 - 深沉</option>
+                                        <option value="neutral">中性聲音</option>
+                                    </optgroup>
+                                    <optgroup label="我的自訂語音" id="customVoicesGroup">
+                                        <!-- Custom voices will be added here -->
+                                        <option value="" disabled>暫無自訂語音</option>
+                                    </optgroup>
                                 </select>
                             </div>
                         </div>

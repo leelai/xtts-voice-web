@@ -18,34 +18,40 @@ print("Model loaded successfully!")
 # Audio output directory
 AUDIO_DIR = os.path.join(app.static_folder, 'audio')
 VOICES_DIR = os.path.join(app.static_folder, 'audio', 'voices')
+CLONED_VOICES_DIR = os.path.join(app.static_folder, 'audio', 'cloned')
 os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(VOICES_DIR, exist_ok=True)
+os.makedirs(CLONED_VOICES_DIR, exist_ok=True)
 
-# Voice presets configuration
+# Voice presets configuration with VCTK model for diversity
 VOICE_PRESETS = {
     'female_soft': {
         'name': '女聲 - 溫柔',
         'file': 'female_soft.wav',
-        'model': 'tts_models/en/ljspeech/tacotron2-DDC',
-        'text': 'Hello, I am a gentle female voice for your text to speech needs.'
+        'model': 'tts_models/en/vctk/vits',
+        'speaker': 'p225',  # Female speaker
+        'text': 'Hello, I am a gentle and soft female voice for your text to speech application.'
     },
     'female_bright': {
         'name': '女聲 - 活潑',
         'file': 'female_bright.wav',
-        'model': 'tts_models/en/ljspeech/tacotron2-DDC',
-        'text': 'Hi there! I am an energetic and bright female voice!'
+        'model': 'tts_models/en/vctk/vits',
+        'speaker': 'p234',  # Female speaker
+        'text': 'Hi there! I am an energetic and bright female voice ready to help you!'
     },
     'male_deep': {
         'name': '男聲 - 深沉',
         'file': 'male_deep.wav',
-        'model': 'tts_models/en/ljspeech/tacotron2-DDC',
-        'text': 'Greetings, I am a deep male voice with a professional tone.'
+        'model': 'tts_models/en/vctk/vits',
+        'speaker': 'p226',  # Male speaker
+        'text': 'Greetings, I am a deep male voice with a professional and authoritative tone.'
     },
     'neutral': {
         'name': '中性聲音',
         'file': 'neutral.wav',
-        'model': 'tts_models/en/ljspeech/tacotron2-DDC',
-        'text': 'Hello, I am a neutral voice for general purposes.'
+        'model': 'tts_models/en/vctk/vits',
+        'speaker': 'p230',  # Neutral/Male speaker
+        'text': 'Hello, I am a neutral voice suitable for general purposes and various applications.'
     }
 }
 
@@ -57,11 +63,14 @@ def create_voice_presets():
             try:
                 print(f"Creating voice preset: {preset_info['name']}...")
                 temp_tts = TTS(preset_info['model'])
+                
+                # Generate with specific speaker
                 temp_tts.tts_to_file(
-                    preset_info['text'],
+                    text=preset_info['text'],
+                    speaker=preset_info['speaker'],
                     file_path=voice_path
                 )
-                print(f"✓ Created: {preset_info['name']}")
+                print(f"✓ Created: {preset_info['name']} (Speaker: {preset_info['speaker']})")
             except Exception as e:
                 print(f"Error creating {preset_info['name']}: {e}")
                 # Create silent audio as fallback
@@ -79,14 +88,95 @@ def index():
 
 @app.route('/api/voices', methods=['GET'])
 def get_voices():
-    """Return available voice presets"""
-    voices = {}
+    """Return available voice presets and cloned voices"""
+    voices = {
+        'presets': {},
+        'cloned': {}
+    }
+    
+    # Add presets
     for preset_id, preset_info in VOICE_PRESETS.items():
-        voices[preset_id] = {
+        voices['presets'][preset_id] = {
             'name': preset_info['name'],
             'id': preset_id
         }
+        
+    # Add cloned voices
+    try:
+        cloned_files = os.listdir(CLONED_VOICES_DIR)
+        for file in cloned_files:
+            if file.endswith('.wav'):
+                # Filename format: name_id.wav
+                name_part = file.rsplit('_', 1)[0]
+                voice_id = file
+                voices['cloned'][voice_id] = {
+                    'name': name_part,
+                    'id': voice_id
+                }
+    except Exception as e:
+        print(f"Error listing cloned voices: {e}")
+        
     return jsonify(voices)
+
+@app.route('/api/upload_voice', methods=['POST'])
+def upload_voice():
+    try:
+        if 'audio' not in request.files:
+            return jsonify({'error': 'No audio file provided'}), 400
+            
+        audio_file = request.files['audio']
+        name = request.form.get('name', 'Custom Voice')
+        
+        # Sanitize name
+        safe_name = "".join([c for c in name if c.isalpha() or c.isdigit() or c==' ']).rstrip()
+        safe_name = safe_name.replace(' ', '_')
+        if not safe_name:
+            safe_name = "custom_voice"
+            
+        # Generate unique filename
+        voice_id = f"{safe_name}_{uuid.uuid4().hex[:8]}"
+        filename = f"{voice_id}.wav"
+        
+        # Save to temp file first
+        temp_path = os.path.join(CLONED_VOICES_DIR, f"temp_{filename}")
+        final_path = os.path.join(CLONED_VOICES_DIR, filename)
+        
+        audio_file.save(temp_path)
+        
+        # Convert to WAV using ffmpeg
+        import subprocess
+        try:
+            # Convert to 22050Hz mono 16-bit PCM WAV (standard for TTS)
+            command = [
+                'ffmpeg', '-y',
+                '-i', temp_path,
+                '-acodec', 'pcm_s16le',
+                '-ac', '1',
+                '-ar', '22050',
+                final_path
+            ]
+            subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+            # Remove temp file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+                
+        except subprocess.CalledProcessError as e:
+            print(f"FFmpeg conversion error: {e.stderr.decode()}")
+            # If conversion fails, try to use the original file (rename it)
+            if os.path.exists(temp_path):
+                os.rename(temp_path, final_path)
+            return jsonify({'error': 'Audio conversion failed'}), 500
+        
+        return jsonify({
+            'success': True,
+            'voice_id': filename,
+            'name': safe_name
+        })
+        
+    except Exception as e:
+        print(f"Error uploading voice: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/tts', methods=['POST'])
 def text_to_speech():
@@ -112,10 +202,23 @@ def text_to_speech():
             return jsonify({'error': '請輸入文字'}), 400
         
         # Get speaker wav path
+        speaker_wav = None
+        voice_name = "Unknown"
+        
+        # Check if it's a preset
         if voice_preset in VOICE_PRESETS:
             speaker_wav = os.path.join(VOICES_DIR, VOICE_PRESETS[voice_preset]['file'])
+            voice_name = VOICE_PRESETS[voice_preset]['name']
+        # Check if it's a cloned voice (filename)
         else:
-            speaker_wav = os.path.join(VOICES_DIR, VOICE_PRESETS['female_soft']['file'])
+            potential_path = os.path.join(CLONED_VOICES_DIR, voice_preset)
+            if os.path.exists(potential_path):
+                speaker_wav = potential_path
+                voice_name = voice_preset.rsplit('_', 1)[0]
+            else:
+                # Fallback
+                speaker_wav = os.path.join(VOICES_DIR, VOICE_PRESETS['female_soft']['file'])
+                voice_name = "Fallback (Female Soft)"
         
         if not os.path.exists(speaker_wav):
             return jsonify({'error': '語音檔案不存在'}), 500
@@ -127,7 +230,7 @@ def text_to_speech():
         # Generate speech using XTTS-v2 with custom parameters
         print(f"Generating speech:")
         print(f"  Text: {text[:50]}...")
-        print(f"  Voice: {VOICE_PRESETS.get(voice_preset, {}).get('name', 'Unknown')}")
+        print(f"  Voice: {voice_name}")
         print(f"  Speed: {speed}x")
         print(f"  Temperature: {temperature}")
         
@@ -153,7 +256,7 @@ def text_to_speech():
             'audio_url': audio_url,
             'filename': filename,
             'parameters': {
-                'voice': VOICE_PRESETS.get(voice_preset, {}).get('name', 'Unknown'),
+                'voice': voice_name,
                 'speed': speed,
                 'temperature': temperature,
                 'repetition_penalty': repetition_penalty,
