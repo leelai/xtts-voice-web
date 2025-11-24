@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 語音生成器 - Coqui XTTS-v2</title>
+    <meta name="description" content="使用 Coqui XTTS-v2 技術的高品質文字轉語音應用程式">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="20" cy="20" r="18" stroke="url(#gradient)" stroke-width="2"/>
+                    <path d="M15 20L18 23L25 16" stroke="url(#gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <defs>
+                        <linearGradient id="gradient" x1="0" y1="0" x2="40" y2="40">
+                            <stop offset="0%" stop-color="#667eea"/>
+                            <stop offset="100%" stop-color="#764ba2"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <h1>AI 語音生成器</h1>
+            </div>
+            <p class="subtitle">基於 Coqui XTTS-v2 的高品質文字轉語音</p>
+        </header>
+
+        <main class="main-content">
+            <div class="card input-section">
+                <h2>輸入文字</h2>
+                <form id="ttsForm">
+                    <div class="form-group">
+                        <label for="textInput">請輸入要轉換的文字</label>
+                        <textarea 
+                            id="textInput" 
+                            name="text" 
+                            rows="6" 
+                            placeholder="在這裡輸入任何文字，支援多種語言..." 
+                            required
+                        ></textarea>
+                        <div class="char-count">
+                            <span id="charCount">0</span> 字元
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="languageSelect">選擇語言</label>
+                        <select id="languageSelect" name="language">
+                            <option value="zh-cn">中文 (簡體)</option>
+                            <option value="en">English</option>
+                            <option value="ja">日本語</option>
+                            <option value="ko">한국어</option>
+                            <option value="es">Español</option>
+                            <option value="fr">Français</option>
+                            <option value="de">Deutsch</option>
+                            <option value="it">Italiano</option>
+                            <option value="pt">Português</option>
+                            <option value="ru">Русский</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="generateBtn">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M10 3V17M10 3L6 7M10 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>生成語音</span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="card output-section" id="outputSection" style="display: none;">
+                <h2>生成結果</h2>
+                <div class="audio-player-wrapper">
+                    <audio id="audioPlayer" controls></audio>
+                </div>
+                <button class="btn btn-secondary" id="downloadBtn">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 3V13M10 13L6 9M10 13L14 9M3 17H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>下載音訊</span>
+                </button>
+            </div>
+
+            <div class="loading" id="loadingIndicator" style="display: none;">
+                <div class="spinner"></div>
+                <p>正在生成語音，請稍候...</p>
+            </div>
+
+            <div class="alert" id="alertBox" style="display: none;">
+                <p id="alertMessage"></p>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>Powered by <span class="highlight">Coqui XTTS-v2</span></p>
+        </footer>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
