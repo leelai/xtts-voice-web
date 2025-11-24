@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,17 +11,19 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
     <div class="container">
         <header class="header">
             <div class="logo">
                 <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="20" cy="20" r="18" stroke="url(#gradient)" stroke-width="2"/>
-                    <path d="M15 20L18 23L25 16" stroke="url(#gradient)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="20" cy="20" r="18" stroke="url(#gradient)" stroke-width="2" />
+                    <path d="M15 20L18 23L25 16" stroke="url(#gradient)" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
                     <defs>
                         <linearGradient id="gradient" x1="0" y1="0" x2="40" y2="40">
-                            <stop offset="0%" stop-color="#667eea"/>
-                            <stop offset="100%" stop-color="#764ba2"/>
+                            <stop offset="0%" stop-color="#667eea" />
+                            <stop offset="100%" stop-color="#764ba2" />
                         </linearGradient>
                     </defs>
                 </svg>
@@ -35,37 +38,124 @@
                 <form id="ttsForm">
                     <div class="form-group">
                         <label for="textInput">請輸入要轉換的文字</label>
-                        <textarea 
-                            id="textInput" 
-                            name="text" 
-                            rows="6" 
-                            placeholder="在這裡輸入任何文字，支援多種語言..." 
-                            required
-                        ></textarea>
+                        <textarea id="textInput" name="text" rows="6" placeholder="在這裡輸入任何文字，支援多種語言..."
+                            required></textarea>
                         <div class="char-count">
                             <span id="charCount">0</span> 字元
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="languageSelect">選擇語言</label>
-                        <select id="languageSelect" name="language">
-                            <option value="zh-cn">中文 (簡體)</option>
-                            <option value="en">English</option>
-                            <option value="ja">日本語</option>
-                            <option value="ko">한국어</option>
-                            <option value="es">Español</option>
-                            <option value="fr">Français</option>
-                            <option value="de">Deutsch</option>
-                            <option value="it">Italiano</option>
-                            <option value="pt">Português</option>
-                            <option value="ru">Русский</option>
-                        </select>
+                    <!-- Basic Settings -->
+                    <div class="settings-section">
+                        <h3>基本設定</h3>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="languageSelect">語言</label>
+                                <select id="languageSelect" name="language">
+                                    <option value="zh-cn">中文 (簡體)</option>
+                                    <option value="en">English</option>
+                                    <option value="ja">日本語</option>
+                                    <option value="ko">한국어</option>
+                                    <option value="es">Español</option>
+                                    <option value="fr">Français</option>
+                                    <option value="de">Deutsch</option>
+                                    <option value="it">Italiano</option>
+                                    <option value="pt">Português</option>
+                                    <option value="ru">Русский</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="voiceSelect">語音類型</label>
+                                <select id="voiceSelect" name="voice_preset">
+                                    <option value="female_soft">女聲 - 溫柔</option>
+                                    <option value="female_bright">女聲 - 活潑</option>
+                                    <option value="male_deep">男聲 - 深沉</option>
+                                    <option value="neutral">中性聲音</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="speedSlider">
+                                語速
+                                <span class="value-display" id="speedValue">1.0x</span>
+                            </label>
+                            <input type="range" id="speedSlider" name="speed" min="0.5" max="2.0" step="0.1" value="1.0"
+                                class="slider">
+                            <div class="slider-labels">
+                                <span>慢 (0.5x)</span>
+                                <span>正常 (1.0x)</span>
+                                <span>快 (2.0x)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <div class="settings-section advanced-section">
+                        <div class="section-header" id="advancedToggle">
+                            <h3>進階選項</h3>
+                            <svg class="toggle-icon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M5 7l5 5 5-5H5z" />
+                            </svg>
+                        </div>
+
+                        <div class="advanced-content" id="advancedContent">
+                            <div class="form-group">
+                                <label for="temperatureSlider">
+                                    創造性 (Temperature)
+                                    <span class="value-display" id="temperatureValue">0.65</span>
+                                </label>
+                                <input type="range" id="temperatureSlider" name="temperature" min="0.1" max="1.0"
+                                    step="0.05" value="0.65" class="slider">
+                                <div class="slider-labels">
+                                    <span>保守</span>
+                                    <span>平衡</span>
+                                    <span>創新</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="repetitionSlider">
+                                    重複懲罰
+                                    <span class="value-display" id="repetitionValue">2.0</span>
+                                </label>
+                                <input type="range" id="repetitionSlider" name="repetition_penalty" min="1.0" max="5.0"
+                                    step="0.1" value="2.0" class="slider">
+                                <div class="slider-labels">
+                                    <span>低</span>
+                                    <span>中</span>
+                                    <span>高</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="topPSlider">
+                                    採樣策略 (Top-P)
+                                    <span class="value-display" id="topPValue">0.8</span>
+                                </label>
+                                <input type="range" id="topPSlider" name="top_p" min="0.1" max="1.0" step="0.05"
+                                    value="0.8" class="slider">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Presets -->
+                    <div class="presets-section">
+                        <h3>快速預設</h3>
+                        <div class="preset-buttons">
+                            <button type="button" class="preset-btn" data-preset="formal">📝 正式</button>
+                            <button type="button" class="preset-btn" data-preset="casual">😊 輕鬆</button>
+                            <button type="button" class="preset-btn" data-preset="excited">🎉 激動</button>
+                            <button type="button" class="preset-btn" data-preset="calm">🧘 平靜</button>
+                        </div>
                     </div>
 
                     <button type="submit" class="btn btn-primary" id="generateBtn">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M10 3V17M10 3L6 7M10 3L14 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M10 3V17M10 3L6 7M10 3L14 7" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                         <span>生成語音</span>
                     </button>
@@ -77,9 +167,11 @@
                 <div class="audio-player-wrapper">
                     <audio id="audioPlayer" controls></audio>
                 </div>
+                <div class="parameters-info" id="parametersInfo"></div>
                 <button class="btn btn-secondary" id="downloadBtn">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 3V13M10 13L6 9M10 13L14 9M3 17H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M10 3V13M10 13L6 9M10 13L14 9M3 17H17" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round" />
                     </svg>
                     <span>下載音訊</span>
                 </button>
@@ -102,4 +194,5 @@
 
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
+
 </html>

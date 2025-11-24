@@ -17,37 +17,76 @@ print("Model loaded successfully!")
 
 # Audio output directory
 AUDIO_DIR = os.path.join(app.static_folder, 'audio')
+VOICES_DIR = os.path.join(app.static_folder, 'audio', 'voices')
 os.makedirs(AUDIO_DIR, exist_ok=True)
+os.makedirs(VOICES_DIR, exist_ok=True)
 
-# Create default speaker reference if not exists
-SPEAKER_WAV_PATH =  os.path.join(AUDIO_DIR, 'default_speaker.wav')
+# Voice presets configuration
+VOICE_PRESETS = {
+    'female_soft': {
+        'name': '女聲 - 溫柔',
+        'file': 'female_soft.wav',
+        'model': 'tts_models/en/ljspeech/tacotron2-DDC',
+        'text': 'Hello, I am a gentle female voice for your text to speech needs.'
+    },
+    'female_bright': {
+        'name': '女聲 - 活潑',
+        'file': 'female_bright.wav',
+        'model': 'tts_models/en/ljspeech/tacotron2-DDC',
+        'text': 'Hi there! I am an energetic and bright female voice!'
+    },
+    'male_deep': {
+        'name': '男聲 - 深沉',
+        'file': 'male_deep.wav',
+        'model': 'tts_models/en/ljspeech/tacotron2-DDC',
+        'text': 'Greetings, I am a deep male voice with a professional tone.'
+    },
+    'neutral': {
+        'name': '中性聲音',
+        'file': 'neutral.wav',
+        'model': 'tts_models/en/ljspeech/tacotron2-DDC',
+        'text': 'Hello, I am a neutral voice for general purposes.'
+    }
+}
 
-def create_default_speaker():
-    """Create a default speaker reference audio file if it doesn't exist"""
-    if not os.path.exists(SPEAKER_WAV_PATH):
-        try:
-            print("Creating default speaker reference...")
-            # Use a simple TTS model to generate reference audio
-            simple_tts = TTS("tts_models/en/ljspeech/tacotron2-DDC")
-            simple_tts.tts_to_file(
-                "This is a sample voice for text to speech synthesis.",
-                file_path=SPEAKER_WAV_PATH
-            )
-            print(f"Default speaker reference created at: {SPEAKER_WAV_PATH}")
-        except Exception as e:
-            print(f"Could not create default speaker: {e}")
-            # Create a simple silent audio as fallback
-            sample_rate = 22050
-            duration = 3  # 3 seconds
-            samples = np.zeros(int(sample_rate * duration))
-            sf.write(SPEAKER_WAV_PATH, samples, sample_rate)
+def create_voice_presets():
+    """Create voice preset files if they don't exist"""
+    for preset_id, preset_info in VOICE_PRESETS.items():
+        voice_path = os.path.join(VOICES_DIR, preset_info['file'])
+        if not os.path.exists(voice_path):
+            try:
+                print(f"Creating voice preset: {preset_info['name']}...")
+                temp_tts = TTS(preset_info['model'])
+                temp_tts.tts_to_file(
+                    preset_info['text'],
+                    file_path=voice_path
+                )
+                print(f"✓ Created: {preset_info['name']}")
+            except Exception as e:
+                print(f"Error creating {preset_info['name']}: {e}")
+                # Create silent audio as fallback
+                sample_rate = 22050
+                duration = 3
+                samples = np.zeros(int(sample_rate * duration))
+                sf.write(voice_path, samples, sample_rate)
 
-# Create default speaker on startup
-create_default_speaker()
+# Create voice presets on startup
+create_voice_presets()
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/api/voices', methods=['GET'])
+def get_voices():
+    """Return available voice presets"""
+    voices = {}
+    for preset_id, preset_info in VOICE_PRESETS.items():
+        voices[preset_id] = {
+            'name': preset_info['name'],
+            'id': preset_id
+        }
+    return jsonify(voices)
 
 @app.route('/api/tts', methods=['POST'])
 def text_to_speech():
@@ -56,26 +95,55 @@ def text_to_speech():
         text = data.get('text', '')
         language = data.get('language', 'zh-cn')
         
+        # Voice customization parameters
+        voice_preset = data.get('voice_preset', 'female_soft')
+        speed = float(data.get('speed', 1.0))
+        temperature = float(data.get('temperature', 0.65))
+        repetition_penalty = float(data.get('repetition_penalty', 2.0))
+        top_p = float(data.get('top_p', 0.8))
+        
+        # Validate parameters
+        speed = max(0.5, min(2.0, speed))
+        temperature = max(0.1, min(1.0, temperature))
+        repetition_penalty = max(1.0, min(10.0, repetition_penalty))
+        top_p = max(0.1, min(1.0, top_p))
+        
         if not text:
             return jsonify({'error': '請輸入文字'}), 400
+        
+        # Get speaker wav path
+        if voice_preset in VOICE_PRESETS:
+            speaker_wav = os.path.join(VOICES_DIR, VOICE_PRESETS[voice_preset]['file'])
+        else:
+            speaker_wav = os.path.join(VOICES_DIR, VOICE_PRESETS['female_soft']['file'])
+        
+        if not os.path.exists(speaker_wav):
+            return jsonify({'error': '語音檔案不存在'}), 500
         
         # Generate unique filename
         filename = f"speech_{uuid.uuid4().hex[:8]}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.wav"
         output_path = os.path.join(AUDIO_DIR, filename)
         
-        # Generate speech using XTTS-v2
-        print(f"Generating speech for text: {text[:50]}...")
-        print(f"Using speaker reference: {SPEAKER_WAV_PATH}")
+        # Generate speech using XTTS-v2 with custom parameters
+        print(f"Generating speech:")
+        print(f"  Text: {text[:50]}...")
+        print(f"  Voice: {VOICE_PRESETS.get(voice_preset, {}).get('name', 'Unknown')}")
+        print(f"  Speed: {speed}x")
+        print(f"  Temperature: {temperature}")
         
-        # Generate with speaker_wav
+        # Generate with all parameters
         tts.tts_to_file(
             text=text,
-            speaker_wav=SPEAKER_WAV_PATH,
+            speaker_wav=speaker_wav,
             language=language,
-            file_path=output_path
+            file_path=output_path,
+            speed=speed,
+            temperature=temperature,
+            repetition_penalty=repetition_penalty,
+            top_p=top_p
         )
         
-        print(f"Speech generated successfully: {filename}")
+        print(f"✓ Speech generated successfully: {filename}")
         
         # Return the audio file URL
         audio_url = f"/static/audio/{filename}"
@@ -83,7 +151,14 @@ def text_to_speech():
         return jsonify({
             'success': True,
             'audio_url': audio_url,
-            'filename': filename
+            'filename': filename,
+            'parameters': {
+                'voice': VOICE_PRESETS.get(voice_preset, {}).get('name', 'Unknown'),
+                'speed': speed,
+                'temperature': temperature,
+                'repetition_penalty': repetition_penalty,
+                'top_p': top_p
+            }
         })
         
     except Exception as e:
@@ -101,8 +176,8 @@ def cleanup_old_files():
     try:
         files = os.listdir(AUDIO_DIR)
         for file in files:
-            # Skip the default speaker reference
-            if file == 'default_speaker.wav':
+            # Skip voice presets directory
+            if file == 'voices':
                 continue
                 
             file_path = os.path.join(AUDIO_DIR, file)
