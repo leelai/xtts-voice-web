@@ -72,7 +72,7 @@
 
 ## 📋 系統需求
 
-- Python 3.8 或更高版本
+- Python 3.9 - 3.11 (不支援 Python 3.12+)
 - 建議至少 8GB VRAM 的顯示卡（可在較低配置下運行，但速度較慢）
 - 首次運行會自動下載模型檔案（約 2GB）
 
@@ -88,11 +88,13 @@ cd xtts-voice-web
 ### 2. 創建虛擬環境
 
 ```bash
-python3 -m venv venv
+python3.10 -m venv venv  # 推薦使用 Python 3.10
 source venv/bin/activate  # macOS/Linux
 # 或
 venv\Scripts\activate  # Windows
 ```
+
+> **注意**：如果您的系統預設 Python 版本是 3.12 或更高，請務必指定使用 `python3.10` 或 `python3.11` 來創建虛擬環境。```
 
 ### 3. 安裝依賴
 

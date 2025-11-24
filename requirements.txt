@@ -1,5 +1,6 @@
 Flask==3.0.0
 flask-cors==4.0.0
 TTS
-torch
-torchaudio
+torch==2.5.1
+torchaudio==2.5.1
+transformers==4.41.2
